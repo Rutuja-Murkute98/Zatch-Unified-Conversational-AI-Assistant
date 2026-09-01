@@ -1,0 +1,27 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Test & tooling caches
+.pytest_cache/
+.ruff_cache/
+
+# Local test/run artifacts
+test_output.txt
+*.log
+
+# Secrets - never commit real credentials
+.env
+
+# Reference docs containing real captured production data
+# (passwords, tokens, bank details, live schema dumps)
+docs/zatch-database-schema.txt
+docs/requirements.pdf
+docs/staging-collections-and-fields.pdf

@@ -1,0 +1,75 @@
+# Render blueprint. Render reads this on first deploy and configures the
+# service from it, so the settings below are reviewed here rather than
+# clicked into a dashboard nobody can audit later.
+#
+# THE DATABASE CHOICE IS THE IMPORTANT LINE IN THIS FILE.
+# MONGODB_DATABASE is zatch_demo, not zatch, and that is not a
+# convenience:
+#
+#   - it keeps real customer orders, delivery cities and tracking
+#     numbers off a public URL entirely
+#   - the provider filter keys on this exact value, so Groq and Gemini
+#     become eligible automatically - the demo runs on free tiers and
+#     stops depending on the Azure credit that expires 2026-09-25
+#   - it means the Atlas network allow-list only has to be opened on the
+#     demo cluster, never on the one holding real customers
+#
+# Point MONGODB_URI at the DEMO cluster to match. Pointing it at the
+# real cluster while this says zatch_demo would query a database that is
+# not there, which fails loudly - but do not rely on that.
+
+services:
+  - type: web
+    name: zatch-assistant
+    runtime: docker
+    # Closest region to an Indian client and to a Mumbai/Singapore Atlas
+    # cluster. Every extra hop shows up in an answer that already takes
+    # eight seconds.
+    region: singapore
+
+    # STARTER, NOT FREE, AND HERE IS THE TRADE. Render's free web
+    # services spin down after ~15 minutes idle, and the next visitor
+    # waits roughly a minute for a cold start - on a link sent to a
+    # client to open "whenever", that first impression is the product
+    # looking broken. Starter stays warm. Change to `free` if the link
+    # is only for a scheduled call you are present for.
+    plan: starter
+
+    # Render polls this to decide the service is live. /health returns
+    # 200 whenever the app is serving, including when the LLM chain is
+    # merely degraded - which is correct: a single-provider warning is
+    # not a reason to restart a working service.
+    healthCheckPath: /health
+
+    envVars:
+      # Set here because they are decisions, not secrets, and they
+      # should be visible in review.
+      - key: MONGODB_DATABASE
+        value: zatch_demo
+      # The whole point of this deployment is the page at /demo.
+      - key: DEMO_UI_ENABLED
+        value: "true"
+      # Safe above 1 only because conversation memory and the rate limit
+      # are shared through Redis. If REDIS_URL is left unset below, put
+      # this back to 1 - two workers without it means a follow-up
+      # question can land on a worker that never saw the first message.
+      - key: WEB_CONCURRENCY
+        value: "2"
+
+      # sync: false means Render prompts for the value once, stores it
+      # encrypted, and never writes it into this file or the repository.
+      # Nothing secret belongs in git - see .gitignore and .dockerignore.
+      - key: MONGODB_URI          # the DEMO cluster, not the real one
+        sync: false
+      - key: JWT_SECRET           # must match whatever mints the client's token
+        sync: false
+      - key: LLM_API_KEY          # Groq - free tier, carries the demo
+        sync: false
+      - key: GEMINI_API_KEY       # fallback, separate free quota
+        sync: false
+      - key: REDIS_URL            # Upstash; omit and set WEB_CONCURRENCY=1
+        sync: false
+
+      # AZURE_OPENAI_* IS DELIBERATELY ABSENT. On demo data the free
+      # providers are eligible and sufficient, so an unattended link
+      # cannot quietly drain a credit that expires in under a month.

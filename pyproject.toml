@@ -1,0 +1,47 @@
+[project]
+name = "zatch-unified-conversational-ai-assistant"
+version = "0.1.0"
+description = "Read-only conversational AI assistant for the Zatch social-commerce app."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.141.1",
+    "groq>=1.6.0",
+    "httpx>=0.28.1",
+    "motor>=3.7.1",
+    "pydantic-settings>=2.14.2",
+    "pyjwt>=2.13.0",
+    "pymongo>=4.17.0",
+    "redis>=8.1.0",
+    "structlog>=26.1.0",
+    "uvicorn[standard]>=0.52.3",
+]
+
+[dependency-groups]
+dev = [
+    "fakeredis>=2.37.1",
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "sentence-transformers>=6.0.0",
+]
+
+[tool.pytest.ini_options]
+# Scoped to the test package so a bare `pytest` can never collect and
+# execute a dev script from scripts/ or the project root.
+testpaths = ["app/tests"]
+# Live-API tests are deselected by DEFAULT. They call the real LLM, so
+# they are nondeterministic and bounded by free-tier quota - a suite that
+# fails for reasons unrelated to the code stops being read. Run them
+# deliberately with:  uv run pytest -m live
+addopts = "-m 'not live'"
+markers = [
+    "live: hits the real LLM API (costs quota, nondeterministic)",
+    # Applied automatically by conftest to anything requesting the `db`
+    # fixture - never written by hand. CI deselects it, because Atlas
+    # only accepts allow-listed IPs and CI runners have none.
+    "needs_db: reads the live MongoDB sandbox",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
