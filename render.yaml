@@ -29,13 +29,13 @@ services:
     # eight seconds.
     region: singapore
 
-    # STARTER, NOT FREE, AND HERE IS THE TRADE. Render's free web
-    # services spin down after ~15 minutes idle, and the next visitor
-    # waits roughly a minute for a cold start - on a link sent to a
-    # manager to open "whenever", that first impression is the product
-    # looking broken. Starter stays warm. Change to `free` if the link
-    # is only for a scheduled call you are present for.
-    plan: starter
+    # FREE, DELIBERATELY, FOR NOW. Starter stays warm but needs a card on
+    # file; this is a one-manager review, not a standing public service,
+    # so free is the right trade - it spins down after ~15 min idle, and
+    # the next visitor waits ~30-60s for a cold start. Nothing else about
+    # the app differs. Move to `starter` if this ever becomes a link
+    # people open unannounced and the cold-start wait stops being fine.
+    plan: free
 
     # Render polls this to decide the service is live. /health returns
     # 200 whenever the app is serving, including when the LLM chain is
