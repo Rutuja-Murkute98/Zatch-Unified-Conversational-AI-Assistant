@@ -82,6 +82,15 @@ PRODUCT_CARD_TOOLS = {
     "get_recommendations",
 }
 
+# get_product_detail is handled SEPARATELY, not folded into the set above,
+# because its raw result is one dict (a single already-named product),
+# never a list - "show me [that product]" or "tell me more" resolves
+# straight to this tool with nothing else in the same turn. Measured: a
+# user who followed up with a bare "show me" got a fuller TEXT answer
+# (colours, stock) from exactly this tool and no photo at all, because
+# the list-shaped check below silently never matched a dict.
+SINGLE_PRODUCT_CARD_TOOLS = {"get_product_detail"}
+
 
 def _product_image_url(product: dict) -> str | None:
     """First real photo, if the product has one. Sold from Zatch's own
@@ -104,6 +113,22 @@ def _product_card(product: dict) -> dict:
         "price": product.get("price"),
         "discountedPrice": product.get("discountedPrice"),
         "image": _product_image_url(product),
+    }
+
+
+def _product_card_from_detail(detail: dict) -> dict:
+    """Same card shape as _product_card, but for get_product_detail's
+    result - which already carries "productId" (not "_id") because
+    products_repo.get_product_detail reshapes the document before
+    returning it. A second builder rather than reusing _product_card
+    with an if/else, so neither function has to guess which key the
+    other one meant."""
+    return {
+        "product_id": detail.get("productId"),
+        "name": detail.get("name"),
+        "price": detail.get("price"),
+        "discountedPrice": detail.get("discountedPrice"),
+        "image": _product_image_url(detail),
     }
 
 
@@ -494,6 +519,20 @@ async def execute_tool(
             None,
         )
         if card is not None:
+            on_event({"type": "product", "tool": tool_name, "product": card})
+
+    # SAME IDEA, FOR A SINGLE NAMED PRODUCT. get_product_detail's result
+    # is one dict, not a list - "show me [the item just discussed]"
+    # resolves straight here with no search tool in the same turn, so
+    # without this branch that turn never gets a photo at all, no matter
+    # how directly the user asked to see the product.
+    elif (
+        on_event is not None
+        and tool_name in SINGLE_PRODUCT_CARD_TOOLS
+        and isinstance(result, dict)
+    ):
+        card = _product_card_from_detail(result)
+        if card["image"]:
             on_event({"type": "product", "tool": tool_name, "product": card})
 
     trimmer = _TRIMMERS.get(tool_name)
